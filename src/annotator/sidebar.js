@@ -173,16 +173,21 @@ export class Sidebar {
 
     // Set up the toolbar on the left edge of the sidebar.
     const toolbarContainer = document.createElement('div');
+
+    console.info("---> creatingToolbar");
+
     this.toolbar = new ToolbarController(toolbarContainer, {
       createAnnotation: () => {
+        // This is for page-level notes/annotations.
         console.info("this._guestRPC.length", this._guestRPC.length);
+
         if (this._guestRPC.length === 0) {
           return;
         }
 
         const rpc = this._guestWithSelection ?? this._guestRPC[0];
         console.info("rpc", rpc);
-        
+
         rpc.call('createAnnotation');
       },
       setSidebarOpen: open => (open ? this.open() : this.close()),

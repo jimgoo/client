@@ -98,10 +98,11 @@ export class AnnotationsService {
       annotationData
     );
 
+    // <TODO>: Why would we need to do this?
     // Highlights are peculiar in that they always have private permissions
-    if (metadata.isHighlight(annotation)) {
-      annotation.permissions = privatePermissions(userid);
-    }
+    // if (metadata.isHighlight(annotation)) {
+    //   annotation.permissions = privatePermissions(userid);
+    // }
     return annotation;
   }
 

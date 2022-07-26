@@ -323,6 +323,8 @@ export class FrameSyncService {
         // in all frames, so this will make all existing highlights visible too.
         this._hostRPC.call('showHighlights');
 
+        console.info("guestRPC createAnnotation:", annot);
+
         // Create the new annotation in the sidebar.
         this._annotationsService.create(annot);
       }

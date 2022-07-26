@@ -820,7 +820,7 @@ export class Guest {
       uri: info.uri,
       document: info.metadata,
       target,
-      $highlight: true,
+      $highlight: highlight,
       $tag: 'a:' + generateHexString(8),
     };
     
