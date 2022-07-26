@@ -15,3 +15,4 @@ package-lock.json
 # yalc related files
 yalc.lock
 .yalc/
+.vscode

@@ -24,6 +24,8 @@ import { Notebook } from './notebook';
 import { Sidebar } from './sidebar';
 import { EventBus } from './util/emitter';
 
+import debounce from 'lodash.debounce';
+
 /** @typedef {import('../types/annotator').Destroyable} Destroyable */
 
 // Look up the URL of the sidebar. This element is added to the page by the
@@ -89,6 +91,9 @@ function init() {
   }
 
   const vsFrameRole = vitalSourceFrameRole();
+
+  console.info('vsFrameRole: ' + vsFrameRole);
+
   if (vsFrameRole === 'container') {
     const vitalSourceInjector = new VitalSourceInjector(annotatorConfig);
     destroyables.push(vitalSourceInjector);
@@ -101,6 +106,75 @@ function init() {
     // Create the guest that handles creating annotations and displaying highlights.
     const guest = new Guest(document.body, annotatorConfig, hostFrame);
     destroyables.push(hypothesisInjector, guest);
+
+    // // method to check if element is in view
+    // const isInViewport = function(/** @type {{ getBoundingClientRect: () => any; }} */ element) {
+    //   const rect = element.getBoundingClientRect();
+    //   return (
+    //       rect.top >= 0 &&
+    //       rect.left >= 0 &&
+    //       rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+    //       rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+    //   );
+    // }
+
+    const getCells = () => {
+      return document.getElementsByClassName("jp-Cell");
+      // return document.body.getElementsByTagName("*");
+    }
+    
+    // called when user scrolls the page
+    const handleScroll = () => {
+
+      let scrollHeight = Math.max(
+        document.body.scrollHeight, document.documentElement.scrollHeight,
+        document.body.offsetHeight, document.documentElement.offsetHeight,
+        document.body.clientHeight, document.documentElement.clientHeight
+      );
+
+      let relScroll = window.scrollY / scrollHeight;
+  
+      // console.info(document.body.scrollHeight, document.documentElement.scrollHeight,
+      //   document.body.offsetHeight, document.documentElement.offsetHeight,
+      //   document.body.clientHeight, document.documentElement.clientHeight);
+      
+      console.info('height: ' + scrollHeight + ', scrollY: ' + window.scrollY 
+      + ', rel: ' + window.scrollY / scrollHeight);
+
+      guest._updateScrollPositionRel(relScroll);
+
+      // var a = document.body.scrollTop;
+      // var b = document.body.scrollHeight - document.body.clientHeight;
+      // var c = a / b;
+
+      // console.info("document.body.scrollTop ", document.body.scrollTop);
+      // console.info("document.body.offsetHeight ", document.body.offsetHeight);
+      // console.info("pct", document.body.scrollTop/document.body.offsetHeight);
+      // console.info("c", a, b, c);
+  
+      // const elements = getCells()
+      // const length = elements.length;
+  
+      // var i = 1;
+      // for (const elem of elements) {
+      //   const inView = isInViewport(elem);
+      //   if (inView) {
+      //     console.info("first cell in view", i, "/", elements.length);
+      //     var a = elem.scrollTop;
+      //     var b = elem.scrollHeight - elem.clientHeight;
+      //     var c = a / b;
+      //     console.info("a, b, c", a, b, c);
+
+      //     guest._updateScrollPosition(i);
+      //     break;
+      //   }
+      //   i++;
+      // }
+    };
+  
+    guest._initYjs(getCells(), document, window);
+    window.addEventListener("scroll", debounce(handleScroll, 100));
+
   }
 
   sidebarLinkElement.addEventListener('destroy', () => {

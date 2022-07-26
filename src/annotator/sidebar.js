@@ -175,11 +175,14 @@ export class Sidebar {
     const toolbarContainer = document.createElement('div');
     this.toolbar = new ToolbarController(toolbarContainer, {
       createAnnotation: () => {
+        console.info("this._guestRPC.length", this._guestRPC.length);
         if (this._guestRPC.length === 0) {
           return;
         }
 
         const rpc = this._guestWithSelection ?? this._guestRPC[0];
+        console.info("rpc", rpc);
+        
         rpc.call('createAnnotation');
       },
       setSidebarOpen: open => (open ? this.open() : this.close()),

@@ -142,6 +142,12 @@ export default function Toolbar({
               icon={newAnnotationType === 'note' ? 'note' : 'annotate'}
               onClick={createAnnotation}
             />
+            <ToolbarButton
+              title="Sync scroll with presenter"
+              icon={showHighlights ? 'show' : 'hide'}
+              selected={showHighlights}
+              onClick={toggleHighlights}
+            />
           </div>
         </>
       )}

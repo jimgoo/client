@@ -4,6 +4,7 @@ import {
   VitalSourceContentIntegration,
   vitalSourceFrameRole,
 } from './vitalsource';
+import { NBIntegration } from './nb';
 
 /**
  * @typedef {import('../../types/annotator').Annotator} Annotator
@@ -19,9 +20,17 @@ import {
  * @param {object} options
  *   @param {ContentPartner} [options.contentPartner] - Content partner banner to show,
  *     if supported by the integration.
+ * * @param {boolean} [options.isNb]
  * @return {Integration}
  */
-export function createIntegration(annotator, { contentPartner } = {}) {
+export function createIntegration(annotator, { contentPartner, isNb } = {}) {
+
+  console.info("createIntegration", { contentPartner, isNb });
+
+  if (isNb) {
+    return new NBIntegration(annotator);
+  }
+
   if (isPDF()) {
     return new PDFIntegration(annotator, { contentPartner });
   }

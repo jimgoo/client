@@ -21,6 +21,10 @@ import { findClosestOffscreenAnchor } from './util/buckets';
 import { frameFillsAncestor } from './util/frame';
 import { normalizeURI } from './util/url';
 
+import * as Y from 'yjs';
+import { WebsocketProvider } from 'y-websocket';
+import DoUsername from 'do_username';
+
 /**
  * @typedef {import('../types/annotator').AnnotationData} AnnotationData
  * @typedef {import('../types/annotator').Annotator} Annotator
@@ -144,6 +148,10 @@ export class Guest {
     /** @type {Range[]} - Ranges of the current text selection. */
     this.selectedRanges = [];
 
+    // Parse the URL with any query parameters.
+    // Important that this comes before any scroll callbacks trigger.
+    this._parse_window_url(new URL(hostFrame.location.href));
+
     this._adder = new Adder(this.element, {
       onAnnotate: () => this.createAnnotation(),
       onHighlight: () => this.createAnnotation({ highlight: true }),
@@ -193,6 +201,7 @@ export class Guest {
      */
     this._integration = createIntegration(this, {
       contentPartner: config.contentPartner,
+      isNb: this._isNb,
     });
     this._integration.on('uriChanged', async () => {
       const metadata = await this.getDocumentInfo();
@@ -234,7 +243,181 @@ export class Guest {
      * @type {Set<string>}
      */
     this._focusedAnnotations = new Set();
+
+    //////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////
+
+    console.info("Guest initialized");
   }
+
+  /** @param {URL} url */
+  _parse_window_url(url) {
+    console.info("Parsing window url", url);
+
+    const name = url.searchParams.get('name');
+    const color = url.searchParams.get('color');
+    const isHost = url.searchParams.get('isHost');
+    const isNb = url.searchParams.get('isNb');
+
+    if (name) {
+      this._username = name;
+    } else {
+      this._username = DoUsername.generate(15);
+    }
+
+    if (color) {
+      this._usercolor = color;
+    } else {
+      // One approach is to pick a random color from a pool of colors that work well with your project.
+      const usercolors = [
+        '#30bced',
+        '#6eeb83',
+        '#ffbc42',
+        '#ecd444',
+        '#ee6352',
+        '#9ac2c9',
+        '#8acb88',
+        '#1be7ff'
+      ]
+      this._usercolor = usercolors[Math.floor(Math.random() * usercolors.length)]
+    }
+
+    if (isHost) {
+      if (isHost?.toLowerCase() === 'true') {
+        this._isHost = true;
+      } else {  
+        this._isHost = false;
+      }
+    } else {
+      this._isHost = false;
+    }
+
+    if (isNb) {
+      if (isNb?.toLowerCase() === 'true') {
+        this._isNb = true;
+      } else {
+        this._isNb = false;
+      }
+    } else {
+      this._isNb = false;
+    }
+
+    console.info("Parsed window url", this._username, this._usercolor, this._isHost, this._isNb);
+  }
+
+  /** 
+   * @param {HTMLCollection} cells 
+   * @param {Document} document 
+   * @param {Window} window 
+   * */  
+  _initYjs(cells, document, window) {
+    this._userlist = null;
+
+    // Yjs documents are collections of
+    // shared objects that sync automatically.
+    const ydoc = new Y.Doc()
+
+    // Get provider
+    const provider = new WebsocketProvider(
+      // 'wss://localhost:1234',
+      // 'jimgoo-demo',
+      'wss://demos.yjs.dev',
+      'jimgoo-demo2',
+      ydoc
+    )
+
+    // if (false) { //provider.shouldConnect) {
+    //   console.info("disconnecting to Yjs provider");
+    //   provider.disconnect();
+    //   // connectBtn.textContent = 'Connect'
+    // } else {
+    //   console.info("connecting to Yjs provider");
+    //   provider.connect();
+    //   // connectBtn.textContent = 'Disconnect'
+    // }
+
+    // All of our network providers implement the awareness crdt
+    this._awareness = provider.awareness
+
+    // You can observe when a user updates their awareness information
+    this._awareness.on('change', () => {
+      // Whenever somebody updates their awareness information,
+      // we log all awareness information from all users.
+      // console.info("awareness change:", Array.from(awareness.getStates().values()))
+
+      // Map each awareness state to a dom-string
+      /**
+       * @type {string[]}
+       */
+      const userlist = []
+      // if (this._awareness) {
+      this._awareness.getStates().forEach(state => {
+        // console.log(state)
+        if (state.user) {
+          userlist.push(state.user);
+          if ((this._isHost === false) && (state.user.isHost === true)) {
+            const cellIdx = state.user.cellIdx;
+
+            //console.info("scrolling into view ", cellIdx, state.user, this._username);
+            //cells[cellIdx].scrollIntoView();
+            
+            let scrollHeight = Math.max(
+              document.body.scrollHeight, document.documentElement.scrollHeight,
+              document.body.offsetHeight, document.documentElement.offsetHeight,
+              document.body.clientHeight, document.documentElement.clientHeight
+            );
+            var offsetY = cellIdx * scrollHeight;
+            console.info("scrolling relatively ", cellIdx, offsetY);
+            // TODO: sync x in addtion to y
+            window.scrollTo(0, offsetY);
+          }
+        }
+      })
+      this._userlist = userlist;
+      console.info("userlist:", this._userlist);
+    })
+
+    // You can think of your own awareness information as a key-value store.
+    // We update our "user" field to propagate relevant user information.
+    this._awareness.setLocalStateField('user', {
+      name: this._username,
+      color: this._usercolor,
+      cellIdx: 0,
+      isHost: this._isHost,
+    })
+  }
+
+  /** 
+   * @param {number} cellIdx
+   * */
+  _updateScrollPosition(cellIdx) {
+    if (this._awareness) {
+      this._awareness.setLocalStateField('user', {
+        name: this._username,
+        color: this._usercolor,
+        cellIdx: cellIdx,
+        isHost: this._isHost,
+      })
+    } else {
+      console.error("no awareness when updating scroll position");
+    }
+  }
+
+    /** 
+   * @param {number} relScroll
+   * */
+     _updateScrollPositionRel(relScroll) {
+      if (this._awareness) {
+        this._awareness.setLocalStateField('user', {
+          name: this._username,
+          color: this._usercolor,
+          cellIdx: relScroll,
+          isHost: this._isHost,
+        })
+      } else {
+        console.error("no awareness when updating scroll position");
+      }
+    }
 
   // Add DOM event listeners for clicks, taps etc. on the document and
   // highlights.
@@ -614,6 +797,8 @@ export class Guest {
    * @return {Promise<AnnotationData>} - The new annotation
    */
   async createAnnotation({ highlight = false } = {}) {
+
+    console.info("createAnnotation, highlight: ", highlight);
     const ranges = this.selectedRanges;
     this.selectedRanges = [];
 
@@ -635,9 +820,11 @@ export class Guest {
       uri: info.uri,
       document: info.metadata,
       target,
-      $highlight: highlight,
+      $highlight: true,
       $tag: 'a:' + generateHexString(8),
     };
+    
+    console.info("createAnnotation, annotation: ", annotation);
 
     this._sidebarRPC.call('createAnnotation', annotation);
     this.anchor(annotation);

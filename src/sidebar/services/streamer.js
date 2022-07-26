@@ -113,6 +113,7 @@ export class StreamerService {
     if (!message) {
       return;
     }
+    console.info("streamer.js | message received:", message);
 
     if (message.type === 'annotation-notification') {
       const annotations = message.payload;
@@ -260,7 +261,10 @@ export class StreamerService {
    *    process has started.
    */
   async connect(options = {}) {
-    this._updateImmediately = options.applyUpdatesImmediately ?? true;
+
+    ////////////////////////////////////////////////////
+    this._updateImmediately = true; // options.applyUpdatesImmediately ?? true;
+    console.info("streamer.js connecting | updateImmediately:", this._updateImmediately);
 
     // Setup reconnection when user changes, as auth token will have changed.
     if (!this._reconnectSetUp) {
